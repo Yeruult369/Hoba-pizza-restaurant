@@ -1,0 +1,21 @@
+(function(){
+ const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+ const menuBtn=$('[data-menu-toggle]'), nav=$('#primary-nav');
+ if(menuBtn&&nav){menuBtn.addEventListener('click',()=>{let open=nav.classList.toggle('open');menuBtn.setAttribute('aria-expanded',String(open));});$$('a',nav).forEach(x=>x.addEventListener('click',()=>nav.classList.remove('open')))}
+ if('IntersectionObserver' in window){let obs=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target)}}),{threshold:.08});$$('.reveal').forEach(x=>obs.observe(x))}else $$('.reveal').forEach(x=>x.classList.add('visible'));
+ const revealToast=(msg)=>{let t=$('#toast');if(!t)return;t.textContent=msg;t.classList.add('show');clearTimeout(window._hobaToast);window._hobaToast=setTimeout(()=>t.classList.remove('show'),2400)};
+ const money=v=>Number(v).toLocaleString('en-US')+'₮';
+ const stored=()=>{try{return JSON.parse(localStorage.getItem('hoba-favs')||'[]')}catch{return []}};
+ let favs=stored();
+ const save=()=>{try{localStorage.setItem('hoba-favs',JSON.stringify(favs))}catch{}};
+ function renderFav(){let count=$('#favCount'),body=$('#favRows'),empty=$('#favEmpty');if(count)count.textContent=favs.length;if(body){body.innerHTML='';favs.forEach((v,i)=>{let row=document.createElement('div');row.className='wishlist-row';let title=document.createElement('span');title.textContent=v.name+(v.size?' · '+v.size:'')+' — '+money(v.price);let del=document.createElement('button');del.type='button';del.textContent='Устгах';del.addEventListener('click',()=>{favs.splice(i,1);save();renderFav()});row.append(title,del);body.append(row)})}if(empty)empty.hidden=favs.length>0;}
+ const panel=$('#wishlist'),toggle=$('#wishlistToggle');if(toggle&&panel){toggle.addEventListener('click',()=>{panel.classList.toggle('open');toggle.setAttribute('aria-expanded',String(panel.classList.contains('open')))});$$('[data-close-favs]').forEach(btn=>btn.addEventListener('click',()=>panel.classList.remove('open')))}
+ $$('[data-add-food]').forEach(btn=>btn.addEventListener('click',()=>{let card=btn.closest('[data-food]');if(!card)return;let price=Number(card.dataset.price||0),size=card.dataset.size||'',name=card.dataset.name||'';favs.push({name,price,size});save();renderFav();revealToast(name+' сонголтын жагсаалтад нэмэгдлээ')}));
+ $$('[data-size]').forEach(btn=>btn.addEventListener('click',()=>{let card=btn.closest('[data-food]');if(!card)return;$$('[data-size]',card).forEach(b=>b.classList.toggle('selected',b===btn));let size=btn.dataset.size;card.dataset.size=size;card.dataset.price=btn.dataset.price;let price=$('[data-price-display]',card);if(price)price.textContent=money(btn.dataset.price);btn.setAttribute('aria-pressed','true');$$('[data-size]',card).filter(b=>b!==btn).forEach(b=>b.setAttribute('aria-pressed','false'))}));
+ const filters=$$('[data-filter]'), search=$('#menuSearch');
+ let activeFilter='all';
+ function updateFilters(){let cards=$$('[data-food]'),q=(search?.value||'').toLowerCase().trim(),visible=0;cards.forEach(c=>{let match=(activeFilter==='all'||c.dataset.category===activeFilter)&&(!q||(c.dataset.name+' '+c.textContent).toLowerCase().includes(q));c.hidden=!match;if(match)visible++});$$('[data-menu-section]').forEach(section=>{section.hidden=!$$('[data-food]',section).some(c=>!c.hidden)});let msg=$('#itemCount');if(msg)msg.textContent=visible+' төрлийн бүтээгдэхүүн';let empty=$('#noResults');if(empty)empty.hidden=visible>0}
+ filters.forEach(f=>f.addEventListener('click',()=>{activeFilter=f.dataset.filter;filters.forEach(b=>{b.classList.toggle('active',b===f);b.setAttribute('aria-pressed',String(b===f))});updateFilters()}));if(search)search.addEventListener('input',updateFilters);if(filters.length)updateFilters();
+ const copy=$('#copyChoices');if(copy)copy.addEventListener('click',async()=>{const str=favs.map(f=>`${f.name}${f.size?' '+f.size:''} – ${money(f.price)}`).join('\n');if(!str){revealToast('Эхлээд нэг хоол сонгоорой');return}try{await navigator.clipboard.writeText('HOBA-д сонирхсон хоол:\n'+str);revealToast('Жагсаалтыг хууллаа')}catch{revealToast('Хуулах боломжгүй — жагсаалтаа тэмдэглээрэй')}});
+ renderFav();
+})();
